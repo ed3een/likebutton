@@ -17,8 +17,170 @@ button:hover {
 </head>
 
 <body>
+  <section id=likelike>
   <div class="mylikebutton"><button class="like_button">Like <span class="likes">0</span> </button>
   </div>
-  </div>
+  </section>
+  <script>
+    
+document.addEventListener('DOMContentLoaded', function () {
+    const likeButtonElements = document.querySelectorAll('.mylikebutton');
+
+    if (likeButtonElements.length === 0) return;
+
+    // Get the current page path (use 'home' for root or index pages)
+    const currentPath = window.location.pathname;
+    const pagePath = currentPath === '/' || currentPath.endsWith('index.html') 
+        ? 'home' 
+        : currentPath.replace(/^\/|\/$/g, ''); // Remove leading/trailing slashes
+
+    // Add styles for the like button container, counter, and popup
+    const style = document.createElement('style');
+    style.textContent = `
+        .mylikebutton-container {
+            display: block;
+            text-align: right;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+        .mylikebutton {
+            display: inline-block;
+            vertical-align: middle;
+        }
+        .mylikebutton-counter {
+            display: inline-block;
+            vertical-align: middle;
+            margin-left: 2px;
+            font-size: 0.8em;
+            color: #000;
+        }
+        .mylikebutton-popup {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            max-width: 300px;
+            padding: 8px;
+            background: #fff;
+            border: 1px solid #000;
+            font: 12px "Courier", monospace;
+            color: #000;
+            pointer-events: none;
+        }
+    `;
+    document.head.appendChild(style);
+
+    // Create a popup element for feedback messages
+    const popup = document.createElement('div');
+    popup.className = 'mylikebutton-popup';
+    document.body.appendChild(popup);
+
+    // Google Form and Sheet details
+    const GOOGLE_FORM_ID = "1FAIpQLSelKHT2v5_Ba5_AdTEP0DAh6C-0eND1gPbaNuy1Cv7zbjrUXA";
+    const EMOJI_ENTRY_ID = "entry.1470542831"; // Entry ID for emoji field
+    const PAGE_ENTRY_ID = "entry.53239671"; // Entry ID for page path field
+    const SECTION_ENTRY_ID = "likelike"; // Entry ID for section identifier
+    const GOOGLE_SHEET_ID = "1dhsZFZmd5Vl-1TUuQq1hx4oQ2lsvsA2Q3nIlZerlkAA";
+    const GOOGLE_SHEET_URL = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/export?format=csv`;
+    const GOOGLE_FORM_URL = `https://docs.google.com/forms/d/e/${GOOGLE_FORM_ID}/formResponse`;
+
+    // Fetch like counts for the current page and sections from Google Sheet
+    async function fetchLikeCounts() {
+        try {
+            const response = await fetch(GOOGLE_SHEET_URL);
+            const data = await response.text();
+            
+            // Split CSV data into rows
+            const rows = data.split('\n').slice(1); // Skip header row
+            
+            // Count rows that match the current page path and section
+            const counts = {};
+            rows.forEach(row => {
+                const [, , path, section] = row.split(',');
+                if (path === pagePath) {
+                    counts[section] = (counts[section] || 0) + 1;
+                }
+            });
+
+            return counts; // Return the counts of likes for this page and sections
+        } catch (error) {
+            console.error("Error fetching like counts:", error);
+            return {}; // Default to empty object on error
+        }
+    }
+
+    likeButtonElements.forEach(async function (likeButtonElement) {
+        const sectionId = likeButtonElement.closest('section').id || 'default';
+        let likeCounts = await fetchLikeCounts();
+        let sectionLikes = likeCounts[sectionId] || 0;
+
+        // Create a container for the button and counter
+        const container = document.createElement('div');
+        container.className = 'mylikebutton-container';
+        container.setAttribute('role', 'button');
+        container.setAttribute('aria-label', 'Click to give burger!');
+
+        likeButtonElement.parentNode.insertBefore(container, likeButtonElement);
+        container.appendChild(likeButtonElement);
+
+        // Create and append a counter display element
+        const counterDisplay = document.createElement('span');
+        counterDisplay.className = 'mylikebutton-counter';
+        counterDisplay.textContent = `(${sectionLikes})`;
+        container.appendChild(counterDisplay);
+
+        // Handle click events on the button container
+        container.addEventListener('click', async function (event) {
+            sectionLikes++; // Increment local like count immediately for feedback
+            counterDisplay.textContent = `(${sectionLikes})`;
+
+            try {
+                // Prepare form data with emoji, page path, and section identifier
+                const formData = new FormData();
+                formData.append(NOSE_ENTRY_ID, likeButtonElement.textContent);
+                formData.append(SISE_ENTRY_ID, pagePath);
+                formData.append(SECTION_ENTRY_ID, sectionId);
+
+                await fetch(GOOGLE_FORM_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: formData,
+                });
+
+                // Show a feedback popup near the click location
+                popup.textContent = "Burger received!";
+                popup.style.display = 'block';
+
+                const popupRect = popup.getBoundingClientRect();
+                let left = event.clientX + 10;
+                let top = event.clientY + 10;
+
+                if (left + popupRect.width > window.innerWidth) {
+                    left = window.innerWidth - popupRect.width - 10;
+                }
+
+                if (top + popupRect.height > window.innerHeight) {
+                    top = window.innerHeight - popupRect.height - 10;
+                }
+
+                popup.style.left = `${left}px`;
+                popup.style.top = `${top}px`;
+
+                setTimeout(function () {
+                    popup.style.display = 'none';
+                }, 3000);
+
+                // Refetch updated like counts from Google Sheet after submission
+                likeCounts = await fetchLikeCounts();
+                sectionLikes = likeCounts[sectionId] || 0;
+                counterDisplay.textContent = `(${sectionLikes})`;
+                
+            } catch (error) {
+                console.error("Error submitting like to Google Form:", error);
+                alert("Something went wrong. Please try again.");
+            }
+        });
+    });
+});
+  </script>
 </body>
 
