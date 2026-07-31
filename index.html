@@ -97,11 +97,14 @@ document.addEventListener('DOMContentLoaded', function () {
             // Count rows that match the current page path and section
             const counts = {};
             rows.forEach(row => {
-                const [, , path, section] = row.split(',');
-                if (path === pagePath) {
-                    counts[section] = (counts[section] || 0) + 1;
-                }
-            });
+            const columns = row.split(",");
+            const path = columns[2]?.trim();
+            const section = columns[3]?.trim();
+
+    if (path === pagePath) {
+        counts[section] = (counts[section] || 0) + 1;
+    }
+    });
 
             return counts; // Return the counts of likes for this page and sections
         } catch (error) {
@@ -185,4 +188,3 @@ document.addEventListener('DOMContentLoaded', function () {
 });
   </script>
 </body>
-
